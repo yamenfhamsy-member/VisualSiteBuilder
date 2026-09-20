@@ -96,7 +96,9 @@ class MainActivity : ComponentActivity() {
                             }
                             PropertiesPanel(
                                 element = selected,
-                                onUpdateElement = { updated -> canvasState.updateElement(updated) }
+                                onUpdateElement = { updated -> canvasState.updateElement(updated) },
+                                onDeleteElement = { canvasState.deleteSelected() },
+                                onDuplicateElement = { canvasState.duplicateSelected() }
                             )
                         }
                     }

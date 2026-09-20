@@ -139,4 +139,23 @@ class CanvasState : ViewModel() {
         _elements.value = _elements.value + element
         _selectedId.value = id
     }
+
+    fun deleteSelected() {
+        val id = _selectedId.value ?: return
+        _elements.value = _elements.value.filter { it.id != id }
+        _selectedId.value = null
+    }
+
+    fun duplicateSelected() {
+        val selectedId = _selectedId.value ?: return
+        val original = _elements.value.firstOrNull { it.id == selectedId } ?: return
+        val copy = original.copy(
+            id = "${original.type.name.lowercase()}_${UUID.randomUUID().toString().take(4)}",
+            x = original.x + 20f,
+            y = original.y + 20f,
+            children = original.children.map { it.copy() }.toMutableList()
+        )
+        _elements.value = _elements.value + copy
+        _selectedId.value = copy.id
+    }
 }
