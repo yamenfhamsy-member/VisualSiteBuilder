@@ -51,6 +51,16 @@ class MainActivity : ComponentActivity() {
                     ) { uri ->
                         uri?.let { canvasState.exportSite(context.contentResolver, it) }
                     }
+                    val saveLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.CreateDocument("application/json")
+                    ) { uri ->
+                        uri?.let { canvasState.saveDesign(context.contentResolver, it) }
+                    }
+                    val openLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.OpenDocument()
+                    ) { uri ->
+                        uri?.let { canvasState.loadDesign(context.contentResolver, it) }
+                    }
                     exportStatus?.let { msg ->
                         LaunchedEffect(msg) {
                             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
@@ -66,6 +76,12 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(text = "VisualSiteBuilder")
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { saveLauncher.launch("design.json") }) {
+                                    Text(text = "Save")
+                                }
+                                Button(onClick = { openLauncher.launch(arrayOf("application/json")) }) {
+                                    Text(text = "Open")
+                                }
                                 Button(
                                     onClick = {
                                         val html = HtmlGenerator.generateStandalone(elements)

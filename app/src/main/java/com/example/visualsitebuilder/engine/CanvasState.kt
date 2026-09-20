@@ -12,10 +12,12 @@ import com.example.visualsitebuilder.model.DesignElement
 import com.example.visualsitebuilder.model.ElementType
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CanvasState : ViewModel() {
     private val _elements = MutableStateFlow(
@@ -157,5 +159,38 @@ class CanvasState : ViewModel() {
         )
         _elements.value = _elements.value + copy
         _selectedId.value = copy.id
+    }
+
+    fun saveDesign(resolver: ContentResolver, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val json = DesignStore.serialize(_elements.value)
+                withContext(Dispatchers.IO) {
+                    resolver.openOutputStream(uri)?.use { out ->
+                        out.write(json.toByteArray())
+                    } ?: throw IOException("Cannot open output")
+                }
+                _exportStatus.value = "Saved OK"
+            } catch (e: Exception) {
+                _exportStatus.value = "Save failed: ${e.message}"
+            }
+        }
+    }
+
+    fun loadDesign(resolver: ContentResolver, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val json = withContext(Dispatchers.IO) {
+                    resolver.openInputStream(uri)?.use { input ->
+                        input.readBytes().toString(Charsets.UTF_8)
+                    } ?: throw IOException("Cannot open input")
+                }
+                _elements.value = DesignStore.deserialize(json)
+                _selectedId.value = null
+                _exportStatus.value = "Loaded OK"
+            } catch (e: Exception) {
+                _exportStatus.value = "Load failed: ${e.message}"
+            }
+        }
     }
 }
