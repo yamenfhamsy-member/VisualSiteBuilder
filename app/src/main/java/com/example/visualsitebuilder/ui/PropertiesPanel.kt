@@ -1,0 +1,125 @@
+// Properties panel editing the currently selected element.
+package com.example.visualsitebuilder.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.example.visualsitebuilder.model.DesignElement
+
+@Composable
+fun PropertiesPanel(
+    element: DesignElement?,
+    onUpdateElement: (DesignElement) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(210.dp)
+            .padding(8.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = "Properties")
+        if (element == null) {
+            Text(text = "Select an element")
+            return
+        }
+        key(element.id) {
+            var text by remember { mutableStateOf(element.text) }
+            var bg by remember { mutableStateOf(element.backgroundColor) }
+            var fg by remember { mutableStateOf(element.textColor) }
+            var fontSize by remember { mutableStateOf(element.fontSize.toString()) }
+            var width by remember { mutableStateOf(element.width.toString()) }
+            var height by remember { mutableStateOf(element.height.toString()) }
+
+            OutlinedTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    onUpdateElement(element.copy(text = it))
+                },
+                label = { Text("Text") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = bg,
+                onValueChange = {
+                    bg = it
+                    if (isColorInputValid(it)) {
+                        onUpdateElement(element.copy(backgroundColor = it))
+                    }
+                },
+                label = { Text("Bg #RRGGBB") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = fg,
+                onValueChange = {
+                    fg = it
+                    if (isColorInputValid(it)) {
+                        onUpdateElement(element.copy(textColor = it))
+                    }
+                },
+                label = { Text("Text #RRGGBB") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = fontSize,
+                onValueChange = {
+                    fontSize = it
+                    it.toIntOrNull()?.let { size ->
+                        if (size in 8..120) onUpdateElement(element.copy(fontSize = size))
+                    }
+                },
+                label = { Text("Font size") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = width,
+                onValueChange = {
+                    width = it
+                    it.toFloatOrNull()?.let { w ->
+                        if (w in 40f..2000f) onUpdateElement(element.copy(width = w))
+                    }
+                },
+                label = { Text("Width") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = height,
+                onValueChange = {
+                    height = it
+                    it.toFloatOrNull()?.let { h ->
+                        if (h in 40f..2000f) onUpdateElement(element.copy(height = h))
+                    }
+                },
+                label = { Text("Height") },
+                singleLine = true
+            )
+        }
+    }
+}
+
+private fun isColorInputValid(value: String): Boolean {
+    if (value.length != 7 || !value.startsWith("#")) return false
+    return try {
+        android.graphics.Color.parseColor(value)
+        true
+    } catch (e: IllegalArgumentException) {
+        false
+    }
+}

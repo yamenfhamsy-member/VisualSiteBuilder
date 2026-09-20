@@ -78,6 +78,12 @@ class CanvasState : ViewModel() {
         _selectedId.value = id
     }
 
+    fun updateElement(updated: DesignElement) {
+        _elements.value = _elements.value.map { el ->
+            if (el.id == updated.id) updated else el
+        }
+    }
+
     fun addElement(type: ElementType) {
         val id = "${type.name.lowercase()}_${UUID.randomUUID().toString().take(4)}"
         val base = _elements.value.size
