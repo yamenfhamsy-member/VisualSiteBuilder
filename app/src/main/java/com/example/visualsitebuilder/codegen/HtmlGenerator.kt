@@ -35,4 +35,24 @@ object HtmlGenerator {
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
+
+    fun generateStandalone(elements: List<DesignElement>): String {
+        val body = elements.joinToString("\n") { renderElement(it) }
+        val css = CssGenerator.generate(elements)
+        return """
+            <!DOCTYPE html>
+            <html lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                $css
+                </style>
+                <title>My Site</title>
+            </head>
+            <body>
+            $body
+            </body>
+            </html>
+        """.trimIndent()
+    }
 }

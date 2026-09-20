@@ -1,6 +1,7 @@
 // Entry activity hosting toolbox, canvas, properties and export.
 package com.example.visualsitebuilder
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -27,8 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.visualsitebuilder.codegen.HtmlGenerator
 import com.example.visualsitebuilder.engine.CanvasState
 import com.example.visualsitebuilder.ui.DesignCanvas
+import com.example.visualsitebuilder.ui.PreviewActivity
 import com.example.visualsitebuilder.ui.PropertiesPanel
 import com.example.visualsitebuilder.ui.ToolboxPanel
 
@@ -62,8 +65,20 @@ class MainActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(text = "VisualSiteBuilder")
-                            Button(onClick = { exportLauncher.launch("mysite.zip") }) {
-                                Text(text = "Export")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        val html = HtmlGenerator.generateStandalone(elements)
+                                        val intent = Intent(context, PreviewActivity::class.java)
+                                        intent.putExtra(PreviewActivity.EXTRA_HTML, html)
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text(text = "Preview")
+                                }
+                                Button(onClick = { exportLauncher.launch("mysite.zip") }) {
+                                    Text(text = "Export")
+                                }
                             }
                         }
                         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
