@@ -1,13 +1,21 @@
 // Canvas state holder (ViewModel) exposing immutable StateFlow.
 package com.example.visualsitebuilder.engine
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.visualsitebuilder.codegen.CssGenerator
+import com.example.visualsitebuilder.codegen.HtmlGenerator
+import com.example.visualsitebuilder.export.ZipExporter
 import com.example.visualsitebuilder.model.DesignElement
 import com.example.visualsitebuilder.model.ElementType
+import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class CanvasState : ViewModel() {
     private val _elements = MutableStateFlow(
@@ -82,6 +90,28 @@ class CanvasState : ViewModel() {
         _elements.value = _elements.value.map { el ->
             if (el.id == updated.id) updated else el
         }
+    }
+
+    private val _exportStatus = MutableStateFlow<String?>(null)
+    val exportStatus: StateFlow<String?> = _exportStatus.asStateFlow()
+
+    fun exportSite(resolver: ContentResolver, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val html = HtmlGenerator.generate(_elements.value)
+                val css = CssGenerator.generate(_elements.value)
+                resolver.openOutputStream(uri)?.use { out ->
+                    ZipExporter.exportToStream(out, html, css)
+                } ?: throw IOException("Cannot open output")
+                _exportStatus.value = "Exported OK"
+            } catch (e: Exception) {
+                _exportStatus.value = "Export failed: ${e.message}"
+            }
+        }
+    }
+
+    fun clearExportStatus() {
+        _exportStatus.value = null
     }
 
     fun addElement(type: ElementType) {
