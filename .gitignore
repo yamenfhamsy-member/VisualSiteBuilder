@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Android Studio
+*.iml
+.idea/
+local.properties
+
+# Keystore
+*.jks
+*.keystore
+
+# OS
+.DS_Store
