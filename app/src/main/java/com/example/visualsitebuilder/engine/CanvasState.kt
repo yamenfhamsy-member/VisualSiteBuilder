@@ -2,7 +2,10 @@
 package com.example.visualsitebuilder.engine
 
 import android.content.ContentResolver
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualsitebuilder.codegen.CssGenerator
@@ -10,6 +13,7 @@ import com.example.visualsitebuilder.codegen.HtmlGenerator
 import com.example.visualsitebuilder.export.ZipExporter
 import com.example.visualsitebuilder.model.DesignElement
 import com.example.visualsitebuilder.model.ElementType
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -100,15 +104,107 @@ class CanvasState : ViewModel() {
     fun exportSite(resolver: ContentResolver, uri: Uri) {
         viewModelScope.launch {
             try {
-                val html = HtmlGenerator.generate(_elements.value)
-                val css = CssGenerator.generate(_elements.value)
+                val elements = _elements.value
+                val files = withContext(Dispatchers.IO) {
+                    loadImageFiles(resolver, elements)
+                }
+                val ext = files.mapValues { it.value.second }
+                val html = HtmlGenerator.generate(elements, ext)
+                val css = CssGenerator.generate(elements)
+                val images = files.mapValues { it.value.first }
+                    .mapKeys { (id, _) -> "$id.${ext[id] ?: "png"}" }
                 resolver.openOutputStream(uri)?.use { out ->
-                    ZipExporter.exportToStream(out, html, css)
+                    ZipExporter.exportToStream(out, html, css, images)
                 } ?: throw IOException("Cannot open output")
                 _exportStatus.value = "Exported OK"
             } catch (e: Exception) {
                 _exportStatus.value = "Export failed: ${e.message}"
             }
+        }
+    }
+
+    private val _previewHtml = MutableStateFlow<String?>(null)
+    val previewHtml: StateFlow<String?> = _previewHtml.asStateFlow()
+
+    fun requestPreview(resolver: ContentResolver) {
+        viewModelScope.launch {
+            try {
+                val elements = _elements.value
+                val dataUris = withContext(Dispatchers.IO) {
+                    loadPreviewDataUris(resolver, elements)
+                }
+                _previewHtml.value = HtmlGenerator.generateStandalone(elements, dataUris)
+            } catch (e: Exception) {
+                _exportStatus.value = "Preview failed: ${e.message}"
+            }
+        }
+    }
+
+    fun clearPreview() {
+        _previewHtml.value = null
+    }
+
+    private fun collectImages(elements: List<DesignElement>): List<DesignElement> =
+        elements.flatMap { listOf(it) + collectImages(it.children) }
+            .filter { it.type == ElementType.IMAGE && it.imageUri.isNotBlank() }
+
+    private fun mimeToExt(mime: String?): String = when (mime) {
+        "image/jpeg" -> "jpg"
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        "image/gif" -> "gif"
+        else -> "png"
+    }
+
+    private fun loadImageFiles(
+        resolver: ContentResolver,
+        elements: List<DesignElement>
+    ): Map<String, Pair<ByteArray, String>> {
+        val result = mutableMapOf<String, Pair<ByteArray, String>>()
+        collectImages(elements).forEach { el ->
+            try {
+                val uri = Uri.parse(el.imageUri)
+                val mime = resolver.getType(uri) ?: "image/png"
+                resolver.openInputStream(uri)?.use { input ->
+                    result[el.id] = input.readBytes() to mimeToExt(mime)
+                }
+            } catch (e: Exception) {
+                // Skip unreadable images, export continues without them.
+            }
+        }
+        return result
+    }
+
+    private fun loadPreviewDataUris(
+        resolver: ContentResolver,
+        elements: List<DesignElement>
+    ): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        collectImages(elements).forEach { el ->
+            try {
+                val uri = Uri.parse(el.imageUri)
+                val bitmap = decodeSampled(resolver, uri) ?: return@forEach
+                val out = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                result[el.id] = "data:image/jpeg;base64,$base64"
+            } catch (e: Exception) {
+                // Skip unreadable images, preview continues without them.
+            }
+        }
+        return result
+    }
+
+    private fun decodeSampled(resolver: ContentResolver, uri: Uri, maxDim: Int = 1024): Bitmap? {
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > maxDim) sample *= 2
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+        } catch (e: Exception) {
+            null
         }
     }
 

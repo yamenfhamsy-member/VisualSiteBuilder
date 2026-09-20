@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.visualsitebuilder.codegen.HtmlGenerator
 import com.example.visualsitebuilder.engine.CanvasState
 import com.example.visualsitebuilder.ui.DesignCanvas
 import com.example.visualsitebuilder.ui.PreviewActivity
@@ -45,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     val elements by canvasState.elements.collectAsState()
                     val selectedId by canvasState.selectedId.collectAsState()
                     val exportStatus by canvasState.exportStatus.collectAsState()
+                    val previewHtml by canvasState.previewHtml.collectAsState()
                     val context = LocalContext.current
                     val exportLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.CreateDocument("application/zip")
@@ -67,6 +67,14 @@ class MainActivity : ComponentActivity() {
                             canvasState.clearExportStatus()
                         }
                     }
+                    previewHtml?.let { html ->
+                        LaunchedEffect(html) {
+                            val intent = Intent(context, PreviewActivity::class.java)
+                            intent.putExtra(PreviewActivity.EXTRA_HTML, html)
+                            context.startActivity(intent)
+                            canvasState.clearPreview()
+                        }
+                    }
                     val selected = elements.firstOrNull { it.id == selectedId }
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(
@@ -84,10 +92,7 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Button(
                                     onClick = {
-                                        val html = HtmlGenerator.generateStandalone(elements)
-                                        val intent = Intent(context, PreviewActivity::class.java)
-                                        intent.putExtra(PreviewActivity.EXTRA_HTML, html)
-                                        context.startActivity(intent)
+                                        canvasState.requestPreview(context.contentResolver)
                                     }
                                 ) {
                                     Text(text = "Preview")
@@ -114,7 +119,10 @@ class MainActivity : ComponentActivity() {
                                 element = selected,
                                 onUpdateElement = { updated -> canvasState.updateElement(updated) },
                                 onDeleteElement = { canvasState.deleteSelected() },
-                                onDuplicateElement = { canvasState.duplicateSelected() }
+                                onDuplicateElement = { canvasState.duplicateSelected() },
+                                onImagePicked = { uri ->
+                                    selected?.let { canvasState.updateElement(it.copy(imageUri = uri)) }
+                                }
                             )
                         }
                     }

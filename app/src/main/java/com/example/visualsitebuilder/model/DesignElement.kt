@@ -12,5 +12,6 @@ data class DesignElement(
     var backgroundColor: String = "#FFFFFF",
     var textColor: String = "#000000",
     var fontSize: Int = 16,
+    var imageUri: String = "",
     val children: MutableList<DesignElement> = mutableListOf()
 )

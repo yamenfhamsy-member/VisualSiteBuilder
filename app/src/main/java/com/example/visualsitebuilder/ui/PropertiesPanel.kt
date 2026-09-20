@@ -1,6 +1,9 @@
 // Properties panel editing the currently selected element.
 package com.example.visualsitebuilder.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,15 +22,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.visualsitebuilder.model.DesignElement
+import com.example.visualsitebuilder.model.ElementType
 
 @Composable
 fun PropertiesPanel(
     element: DesignElement?,
     onUpdateElement: (DesignElement) -> Unit,
     onDeleteElement: () -> Unit,
-    onDuplicateElement: () -> Unit
+    onDuplicateElement: () -> Unit,
+    onImagePicked: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -38,6 +44,21 @@ fun PropertiesPanel(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(text = "Properties")
+        val context = LocalContext.current
+        val pickImageLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let {
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        it, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    // Persistence not granted, transient access still works.
+                }
+                onImagePicked(it.toString())
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onDuplicateElement, enabled = element != null) {
                 Text(text = "Duplicate")
@@ -49,6 +70,11 @@ fun PropertiesPanel(
         if (element == null) {
             Text(text = "Select an element")
             return
+        }
+        if (element.type == ElementType.IMAGE) {
+            Button(onClick = { pickImageLauncher.launch(arrayOf("image/*")) }) {
+                Text(text = "Pick image")
+            }
         }
         key(element.id) {
             var text by remember { mutableStateOf(element.text) }

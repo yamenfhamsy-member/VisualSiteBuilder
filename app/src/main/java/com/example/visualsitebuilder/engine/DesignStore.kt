@@ -32,6 +32,7 @@ object DesignStore {
             .put("backgroundColor", el.backgroundColor)
             .put("textColor", el.textColor)
             .put("fontSize", el.fontSize)
+            .put("imageUri", el.imageUri)
             .put("children", children)
     }
 
@@ -54,6 +55,7 @@ object DesignStore {
             backgroundColor = obj.optString("backgroundColor", "#FFFFFF"),
             textColor = obj.optString("textColor", "#000000"),
             fontSize = obj.optInt("fontSize", 16),
+            imageUri = obj.optString("imageUri", ""),
             children = children
         )
     }

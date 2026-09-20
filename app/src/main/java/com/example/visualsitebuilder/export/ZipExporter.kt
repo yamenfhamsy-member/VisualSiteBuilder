@@ -8,7 +8,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object ZipExporter {
-    suspend fun exportToStream(output: OutputStream, html: String, css: String) {
+    suspend fun exportToStream(
+        output: OutputStream,
+        html: String,
+        css: String,
+        images: Map<String, ByteArray> = emptyMap()
+    ) {
         withContext(Dispatchers.IO) {
             ZipOutputStream(output).use { zip ->
                 zip.putNextEntry(ZipEntry("index.html"))
@@ -18,6 +23,12 @@ object ZipExporter {
                 zip.putNextEntry(ZipEntry("style.css"))
                 zip.write(css.toByteArray())
                 zip.closeEntry()
+
+                images.forEach { (name, bytes) ->
+                    zip.putNextEntry(ZipEntry("images/$name"))
+                    zip.write(bytes)
+                    zip.closeEntry()
+                }
             }
         }
     }
