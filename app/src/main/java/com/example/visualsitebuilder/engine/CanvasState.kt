@@ -67,6 +67,7 @@ class CanvasState : ViewModel() {
     val selectedId: StateFlow<String?> = _selectedId.asStateFlow()
 
     fun moveElement(id: String, dx: Float, dy: Float) {
+        pushHistoryCoalesced(id)
         _elements.value = _elements.value.map { el ->
             if (el.id == id) {
                 val (nx, ny) = DragDropHandler.applyDrag(el.x, el.y, dx, dy)
@@ -78,6 +79,7 @@ class CanvasState : ViewModel() {
     }
 
     fun resizeElement(id: String, dx: Float, dy: Float) {
+        pushHistoryCoalesced(id)
         _elements.value = _elements.value.map { el ->
             if (el.id == id) {
                 val (nw, nh) = DragDropHandler.applyResize(el.width, el.height, dx, dy)
@@ -92,7 +94,80 @@ class CanvasState : ViewModel() {
         _selectedId.value = id
     }
 
+    private val undoStack = ArrayDeque<List<DesignElement>>()
+    private val redoStack = ArrayDeque<List<DesignElement>>()
+    private var lastHistoryId: String? = null
+    private var lastHistoryTime = 0L
+
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
+
+    private fun DesignElement.deepCopy(): DesignElement =
+        copy(children = children.map { it.deepCopy() }.toMutableList())
+
+    private fun snapshot(): List<DesignElement> = _elements.value.map { it.deepCopy() }
+
+    private fun refreshHistoryFlags() {
+        _canUndo.value = undoStack.isNotEmpty()
+        _canRedo.value = redoStack.isNotEmpty()
+    }
+
+    private fun pushHistory() {
+        undoStack.addLast(snapshot())
+        if (undoStack.size > 50) undoStack.removeFirst()
+        redoStack.clear()
+        lastHistoryId = null
+        refreshHistoryFlags()
+    }
+
+    private fun pushHistoryCoalesced(id: String) {
+        val now = System.currentTimeMillis()
+        if (lastHistoryId != id || now - lastHistoryTime > 1500L) {
+            undoStack.addLast(snapshot())
+            if (undoStack.size > 50) undoStack.removeFirst()
+            redoStack.clear()
+            lastHistoryId = id
+            refreshHistoryFlags()
+        }
+        lastHistoryTime = now
+    }
+
+    private fun clearHistory() {
+        undoStack.clear()
+        redoStack.clear()
+        lastHistoryId = null
+        refreshHistoryFlags()
+    }
+
+    fun undo() {
+        if (undoStack.isEmpty()) return
+        redoStack.addLast(snapshot())
+        if (redoStack.size > 50) redoStack.removeFirst()
+        _elements.value = undoStack.removeLast()
+        lastHistoryId = null
+        if (_selectedId.value != null && _elements.value.none { it.id == _selectedId.value }) {
+            _selectedId.value = null
+        }
+        refreshHistoryFlags()
+    }
+
+    fun redo() {
+        if (redoStack.isEmpty()) return
+        undoStack.addLast(snapshot())
+        if (undoStack.size > 50) undoStack.removeFirst()
+        _elements.value = redoStack.removeLast()
+        lastHistoryId = null
+        if (_selectedId.value != null && _elements.value.none { it.id == _selectedId.value }) {
+            _selectedId.value = null
+        }
+        refreshHistoryFlags()
+    }
+
     fun updateElement(updated: DesignElement) {
+        pushHistoryCoalesced(updated.id)
         _elements.value = _elements.value.map { el ->
             if (el.id == updated.id) updated else el
         }
@@ -234,12 +309,14 @@ class CanvasState : ViewModel() {
                 width = 260f, height = 140f, backgroundColor = "#EEEEEE"
             )
         }
+        pushHistory()
         _elements.value = _elements.value + element
         _selectedId.value = id
     }
 
     fun deleteSelected() {
         val id = _selectedId.value ?: return
+        pushHistory()
         _elements.value = _elements.value.filter { it.id != id }
         _selectedId.value = null
     }
@@ -247,6 +324,7 @@ class CanvasState : ViewModel() {
     fun duplicateSelected() {
         val selectedId = _selectedId.value ?: return
         val original = _elements.value.firstOrNull { it.id == selectedId } ?: return
+        pushHistory()
         val copy = original.copy(
             id = "${original.type.name.lowercase()}_${UUID.randomUUID().toString().take(4)}",
             x = original.x + 20f,
@@ -281,6 +359,7 @@ class CanvasState : ViewModel() {
                         input.readBytes().toString(Charsets.UTF_8)
                     } ?: throw IOException("Cannot open input")
                 }
+                clearHistory()
                 _elements.value = DesignStore.deserialize(json)
                 _selectedId.value = null
                 _exportStatus.value = "Loaded OK"

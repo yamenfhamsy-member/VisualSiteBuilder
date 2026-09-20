@@ -45,6 +45,8 @@ class MainActivity : ComponentActivity() {
                     val selectedId by canvasState.selectedId.collectAsState()
                     val exportStatus by canvasState.exportStatus.collectAsState()
                     val previewHtml by canvasState.previewHtml.collectAsState()
+                    val canUndo by canvasState.canUndo.collectAsState()
+                    val canRedo by canvasState.canRedo.collectAsState()
                     val context = LocalContext.current
                     val exportLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.CreateDocument("application/zip")
@@ -84,6 +86,12 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(text = "VisualSiteBuilder")
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { canvasState.undo() }, enabled = canUndo) {
+                                    Text(text = "Undo")
+                                }
+                                Button(onClick = { canvasState.redo() }, enabled = canRedo) {
+                                    Text(text = "Redo")
+                                }
                                 Button(onClick = { saveLauncher.launch("design.json") }) {
                                     Text(text = "Save")
                                 }
