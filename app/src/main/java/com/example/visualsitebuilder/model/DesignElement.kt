@@ -13,5 +13,7 @@ data class DesignElement(
     var textColor: String = "#000000",
     var fontSize: Int = 16,
     var imageUri: String = "",
+    var linkUrl: String = "",
+    var hint: String = "",
     val children: MutableList<DesignElement> = mutableListOf()
 )

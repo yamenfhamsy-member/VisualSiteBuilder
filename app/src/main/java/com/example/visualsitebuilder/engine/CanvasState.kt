@@ -289,29 +289,53 @@ class CanvasState : ViewModel() {
 
     fun addElement(type: ElementType) {
         val id = "${type.name.lowercase()}_${UUID.randomUUID().toString().take(4)}"
-        val base = _elements.value.size
-        val element = when (type) {
-            ElementType.TEXT -> DesignElement(
-                id = id, type = type, x = 40f, y = 60f + base * 80,
-                width = 220f, height = 60f, text = "New Text"
-            )
-            ElementType.BUTTON -> DesignElement(
-                id = id, type = type, x = 40f, y = 60f + base * 80,
-                width = 180f, height = 56f, text = "Button",
-                backgroundColor = "#2196F3", textColor = "#FFFFFF"
-            )
-            ElementType.IMAGE -> DesignElement(
-                id = id, type = type, x = 40f, y = 60f + base * 80,
-                width = 160f, height = 120f, backgroundColor = "#CCCCCC", text = "Image"
-            )
-            ElementType.CONTAINER -> DesignElement(
-                id = id, type = type, x = 40f, y = 60f + base * 80,
-                width = 260f, height = 140f, backgroundColor = "#EEEEEE"
-            )
-        }
+        val count = _elements.value.size
+        val x = 40f
+        val y = 60f + (count % 6) * 90
         pushHistory()
-        _elements.value = _elements.value + element
+        _elements.value = _elements.value + defaultElement(type, id, x, y)
         _selectedId.value = id
+    }
+
+    private fun defaultElement(type: ElementType, id: String, x: Float, y: Float): DesignElement {
+        fun base(
+            w: Float, h: Float, text: String = "",
+            bg: String = "#FFFFFF", fg: String = "#000000", font: Int = 16,
+            link: String = "", hint: String = ""
+        ) = DesignElement(
+            id = id, type = type, x = x, y = y, width = w, height = h,
+            text = text, backgroundColor = bg, textColor = fg, fontSize = font,
+            linkUrl = link, hint = hint
+        )
+        return when (type) {
+            ElementType.TEXT -> base(220f, 60f, "New paragraph")
+            ElementType.HEADING_1 -> base(280f, 64f, "Heading 1", font = 32)
+            ElementType.HEADING_2 -> base(260f, 60f, "Heading 2", font = 28)
+            ElementType.HEADING_3 -> base(240f, 56f, "Heading 3", font = 24)
+            ElementType.HEADING_4 -> base(220f, 52f, "Heading 4", font = 20)
+            ElementType.HEADING_5 -> base(200f, 48f, "Heading 5", font = 18)
+            ElementType.HEADING_6 -> base(200f, 44f, "Heading 6", font = 16)
+            ElementType.LINK -> base(160f, 48f, "Click here", fg = "#1A73E8", link = "https://example.com")
+            ElementType.LABEL -> base(160f, 44f, "Label")
+            ElementType.DIVIDER -> base(240f, 24f)
+            ElementType.IMAGE -> base(160f, 120f, "Image", bg = "#CCCCCC")
+            ElementType.VIDEO -> base(220f, 140f, "Video", bg = "#222222", fg = "#FFFFFF")
+            ElementType.BUTTON -> base(180f, 56f, "Button", bg = "#2196F3", fg = "#FFFFFF")
+            ElementType.INPUT -> base(220f, 56f, hint = "Enter text")
+            ElementType.TEXTAREA -> base(220f, 90f, hint = "Enter text")
+            ElementType.CONTAINER -> base(260f, 140f, bg = "#EEEEEE")
+            ElementType.SECTION -> base(280f, 150f, bg = "#E3F2FD")
+            ElementType.HEADER -> base(300f, 70f, bg = "#BBDEFB")
+            ElementType.FOOTER -> base(300f, 70f, bg = "#BBDEFB")
+            ElementType.NAV -> base(280f, 60f, bg = "#DCEDC8")
+            ElementType.MAIN -> base(280f, 160f, bg = "#F3E5F5")
+            ElementType.ARTICLE -> base(260f, 140f, bg = "#FFF3E0")
+            ElementType.FORM -> base(260f, 160f, bg = "#F5F5F5")
+            ElementType.TABLE -> base(260f, 120f, bg = "#FAFAFA")
+            ElementType.LIST -> base(220f, 110f, "Item 1")
+            ElementType.ORDERED_LIST -> base(220f, 110f, "Item 1")
+            ElementType.LIST_ITEM -> base(200f, 44f, "Item")
+        }
     }
 
     fun deleteSelected() {

@@ -1,4 +1,4 @@
-// Converts an element tree into a standalone HTML document.
+// Converts an element tree into HTML documents (linked or standalone).
 package com.example.visualsitebuilder.codegen
 
 import com.example.visualsitebuilder.model.DesignElement
@@ -9,7 +9,7 @@ object HtmlGenerator {
         elements: List<DesignElement>,
         imageExt: Map<String, String> = emptyMap()
     ): String {
-        val body = elements.joinToString("\n") { renderElement(it, imageExt) }
+        val body = elements.joinToString("\n") { renderElement(it, imageExt, emptyMap()) }
         return """
             <!DOCTYPE html>
             <html lang="ar">
@@ -25,28 +25,11 @@ object HtmlGenerator {
         """.trimIndent()
     }
 
-    private fun renderElement(el: DesignElement, imageExt: Map<String, String>): String = when (el.type) {
-        ElementType.TEXT -> """<p id="${el.id}" class="el-${el.id}">${escapeHtml(el.text)}</p>"""
-        ElementType.IMAGE -> """<img id="${el.id}" class="el-${el.id}" src="${imageFile(el, imageExt)}" />"""
-        ElementType.BUTTON -> """<button id="${el.id}" class="el-${el.id}">${escapeHtml(el.text)}</button>"""
-        ElementType.CONTAINER -> """<div id="${el.id}" class="el-${el.id}">${el.children.joinToString("\n") { renderElement(it, imageExt) }}</div>"""
-    }
-
-    private fun imageFile(el: DesignElement, imageExt: Map<String, String>): String =
-        "images/${el.id}.${imageExt[el.id] ?: "png"}"
-
-    private fun escapeHtml(value: String): String =
-        value
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-
     fun generateStandalone(
         elements: List<DesignElement>,
         imageSrc: Map<String, String> = emptyMap()
     ): String {
-        val body = elements.joinToString("\n") { renderStandalone(it, imageSrc) }
+        val body = elements.joinToString("\n") { renderElement(it, emptyMap(), imageSrc) }
         val css = CssGenerator.generate(elements)
         return """
             <!DOCTYPE html>
@@ -65,9 +48,52 @@ object HtmlGenerator {
         """.trimIndent()
     }
 
-    private fun renderStandalone(el: DesignElement, imageSrc: Map<String, String>): String = when (el.type) {
-        ElementType.IMAGE -> """<img id="${el.id}" class="el-${el.id}" src="${imageSrc[el.id] ?: "images/${el.id}.png"}" />"""
-        ElementType.CONTAINER -> """<div id="${el.id}" class="el-${el.id}">${el.children.joinToString("\n") { renderStandalone(it, imageSrc) }}</div>"""
-        else -> renderElement(el, emptyMap())
+    private fun renderElement(
+        el: DesignElement,
+        imageExt: Map<String, String>,
+        imageSrc: Map<String, String>
+    ): String {
+        val tag = el.type.htmlTag
+        val attrs = """id="${el.id}" class="el-${el.id}""""
+        val kids = el.children.joinToString("\n") { renderElement(it, imageExt, imageSrc) }
+        return when (el.type) {
+            ElementType.IMAGE -> {
+                val src = imageSrc[el.id] ?: imageFile(el, imageExt)
+                """<img $attrs src="$src" />"""
+            }
+            ElementType.INPUT -> {
+                """<input $attrs type="text" placeholder="${escapeHtml(el.hint)}" value="${escapeHtml(el.text)}" />"""
+            }
+            ElementType.DIVIDER -> """<hr $attrs />"""
+            ElementType.LINK -> {
+                val href = escapeHtml(el.linkUrl.ifBlank { "#" })
+                """<a $attrs href="$href">${escapeHtml(el.text)}</a>"""
+            }
+            ElementType.VIDEO -> {
+                val src = escapeHtml(el.linkUrl)
+                """<video $attrs src="$src" controls>$kids</video>"""
+            }
+            ElementType.TEXTAREA -> {
+                """<textarea $attrs placeholder="${escapeHtml(el.hint)}">${escapeHtml(el.text)}</textarea>"""
+            }
+            else -> {
+                val inner = if (ElementType.isContainer(el.type)) {
+                    kids
+                } else {
+                    escapeHtml(el.text) + (if (kids.isNotEmpty()) "\n$kids" else "")
+                }
+                """<$tag $attrs>$inner</$tag>"""
+            }
+        }
     }
+
+    private fun imageFile(el: DesignElement, imageExt: Map<String, String>): String =
+        "images/${el.id}.${imageExt[el.id] ?: "png"}"
+
+    private fun escapeHtml(value: String): String =
+        value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
 }

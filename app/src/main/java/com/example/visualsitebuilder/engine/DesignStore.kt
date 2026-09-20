@@ -33,6 +33,8 @@ object DesignStore {
             .put("textColor", el.textColor)
             .put("fontSize", el.fontSize)
             .put("imageUri", el.imageUri)
+            .put("linkUrl", el.linkUrl)
+            .put("hint", el.hint)
             .put("children", children)
     }
 
@@ -56,6 +58,8 @@ object DesignStore {
             textColor = obj.optString("textColor", "#000000"),
             fontSize = obj.optInt("fontSize", 16),
             imageUri = obj.optString("imageUri", ""),
+            linkUrl = obj.optString("linkUrl", ""),
+            hint = obj.optString("hint", ""),
             children = children
         )
     }

@@ -11,10 +11,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,8 +33,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.visualsitebuilder.model.DesignElement
 import com.example.visualsitebuilder.model.ElementType
 import kotlin.math.roundToInt
@@ -73,7 +80,46 @@ fun DesignCanvas(
                         Text(
                             text = element.text,
                             color = parseColorSafe(element.textColor),
+                            fontSize = element.fontSize.sp,
                             modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    ElementType.HEADING_1,
+                    ElementType.HEADING_2,
+                    ElementType.HEADING_3,
+                    ElementType.HEADING_4,
+                    ElementType.HEADING_5,
+                    ElementType.HEADING_6 -> {
+                        Text(
+                            text = element.text,
+                            color = parseColorSafe(element.textColor),
+                            fontSize = element.fontSize.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    ElementType.LINK -> {
+                        Text(
+                            text = element.text,
+                            color = Color(0xFF1A73E8),
+                            fontSize = element.fontSize.sp,
+                            textDecoration = TextDecoration.Underline,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    ElementType.LABEL -> {
+                        Text(
+                            text = element.text,
+                            color = parseColorSafe(element.textColor),
+                            fontSize = element.fontSize.sp,
+                            modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)
+                        )
+                    }
+                    ElementType.DIVIDER -> {
+                        HorizontalDivider(
+                            thickness = 2.dp,
+                            color = parseColorSafe(element.textColor),
+                            modifier = Modifier.align(Alignment.Center).padding(horizontal = 4.dp)
                         )
                     }
                     ElementType.BUTTON -> {
@@ -83,6 +129,28 @@ fun DesignCanvas(
                         ) {
                             Text(text = element.text)
                         }
+                    }
+                    ElementType.INPUT -> {
+                        OutlinedTextField(
+                            value = element.text,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = false,
+                            placeholder = { Text(text = element.hint) },
+                            singleLine = true,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    ElementType.TEXTAREA -> {
+                        OutlinedTextField(
+                            value = element.text,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = false,
+                            placeholder = { Text(text = element.hint) },
+                            minLines = 2,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
                     ElementType.IMAGE -> {
                         if (element.imageUri.isBlank()) {
@@ -98,12 +166,52 @@ fun DesignCanvas(
                             GalleryImage(uriString = element.imageUri)
                         }
                     }
-                    ElementType.CONTAINER -> {
+                    ElementType.VIDEO -> {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF222222)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "Container", color = Color.Gray)
+                            Text(text = "▶ Video", color = Color.White)
+                        }
+                    }
+                    ElementType.LIST, ElementType.ORDERED_LIST -> {
+                        val items = listOf(element.text) +
+                            element.children.filter { it.type == ElementType.LIST_ITEM }.map { it.text }
+                        Column(modifier = Modifier.align(Alignment.TopStart).padding(6.dp)) {
+                            items.forEachIndexed { index, item ->
+                                val marker = if (element.type == ElementType.LIST) "•" else "${index + 1}."
+                                Text(
+                                    text = "$marker $item",
+                                    color = parseColorSafe(element.textColor),
+                                    fontSize = element.fontSize.sp
+                                )
+                            }
+                        }
+                    }
+                    ElementType.LIST_ITEM -> {
+                        Text(
+                            text = "• ${element.text}",
+                            color = parseColorSafe(element.textColor),
+                            fontSize = element.fontSize.sp,
+                            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp)
+                        )
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .border(1.dp, Color.Gray),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val count = element.children.size
+                            val suffix = if (count > 0) " · $count" else ""
+                            Text(
+                                text = element.type.htmlTag + suffix,
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }

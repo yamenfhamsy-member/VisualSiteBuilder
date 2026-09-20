@@ -1,4 +1,4 @@
-// Properties panel editing the currently selected element.
+// Properties panel editing the currently selected element, grouped in sections.
 package com.example.visualsitebuilder.ui
 
 import android.content.Intent
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,12 +39,12 @@ fun PropertiesPanel(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(210.dp)
+            .width(220.dp)
             .padding(8.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(text = "Properties")
+        Text(text = "Properties", style = MaterialTheme.typography.titleSmall)
         val context = LocalContext.current
         val pickImageLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
@@ -59,6 +60,7 @@ fun PropertiesPanel(
                 onImagePicked(it.toString())
             }
         }
+        SectionTitle(text = "Actions")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onDuplicateElement, enabled = element != null) {
                 Text(text = "Duplicate")
@@ -78,21 +80,55 @@ fun PropertiesPanel(
         }
         key(element.id) {
             var text by remember { mutableStateOf(element.text) }
+            var link by remember { mutableStateOf(element.linkUrl) }
+            var hint by remember { mutableStateOf(element.hint) }
             var bg by remember { mutableStateOf(element.backgroundColor) }
             var fg by remember { mutableStateOf(element.textColor) }
             var fontSize by remember { mutableStateOf(element.fontSize.toString()) }
             var width by remember { mutableStateOf(element.width.toString()) }
             var height by remember { mutableStateOf(element.height.toString()) }
 
-            OutlinedTextField(
-                value = text,
-                onValueChange = {
-                    text = it
-                    onUpdateElement(element.copy(text = it))
-                },
-                label = { Text("Text") },
-                singleLine = true
-            )
+            if (ElementType.showsTextField(element.type) ||
+                ElementType.showsLinkField(element.type) ||
+                ElementType.showsHintField(element.type)
+            ) {
+                SectionTitle(text = "Content")
+            }
+            if (ElementType.showsTextField(element.type)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        onUpdateElement(element.copy(text = it))
+                    },
+                    label = { Text("Text") },
+                    singleLine = true
+                )
+            }
+            if (ElementType.showsLinkField(element.type)) {
+                OutlinedTextField(
+                    value = link,
+                    onValueChange = {
+                        link = it
+                        onUpdateElement(element.copy(linkUrl = it))
+                    },
+                    label = { Text("URL") },
+                    singleLine = true
+                )
+            }
+            if (ElementType.showsHintField(element.type)) {
+                OutlinedTextField(
+                    value = hint,
+                    onValueChange = {
+                        hint = it
+                        onUpdateElement(element.copy(hint = it))
+                    },
+                    label = { Text("Hint") },
+                    singleLine = true
+                )
+            }
+
+            SectionTitle(text = "Style")
             OutlinedTextField(
                 value = bg,
                 onValueChange = {
@@ -115,17 +151,21 @@ fun PropertiesPanel(
                 label = { Text("Text #RRGGBB") },
                 singleLine = true
             )
-            OutlinedTextField(
-                value = fontSize,
-                onValueChange = {
-                    fontSize = it
-                    it.toIntOrNull()?.let { size ->
-                        if (size in 8..120) onUpdateElement(element.copy(fontSize = size))
-                    }
-                },
-                label = { Text("Font size") },
-                singleLine = true
-            )
+            if (ElementType.showsFontSize(element.type)) {
+                OutlinedTextField(
+                    value = fontSize,
+                    onValueChange = {
+                        fontSize = it
+                        it.toIntOrNull()?.let { size ->
+                            if (size in 8..120) onUpdateElement(element.copy(fontSize = size))
+                        }
+                    },
+                    label = { Text("Font size") },
+                    singleLine = true
+                )
+            }
+
+            SectionTitle(text = "Size")
             OutlinedTextField(
                 value = width,
                 onValueChange = {
@@ -150,6 +190,11 @@ fun PropertiesPanel(
             )
         }
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text = text, style = MaterialTheme.typography.labelLarge)
 }
 
 private fun isColorInputValid(value: String): Boolean {
